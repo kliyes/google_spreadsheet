@@ -1,0 +1,5 @@
+.idea/
+test/
+venv/
+google_spreadsheet/demo.py
+*.pyc
