@@ -510,7 +510,7 @@ class Sheet(object):
         :param dimension: ROWS or COLUMNS
         :param start_index: 0-based index
         :param length: numbers of `dimension` to be inserted
-        :param inherit_before: inheritBefore
+        :param inherit_before: inheritFromBefore
         :return: update request
         """
         if start_index == 0:
@@ -523,7 +523,7 @@ class Sheet(object):
                     "startIndex": start_index,
                     "endIndex": start_index + length
                 },
-                "inheritBefore": inherit_before
+                "inheritFromBefore": inherit_before
             }
         }
         return request
