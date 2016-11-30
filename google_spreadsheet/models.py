@@ -27,6 +27,20 @@ class ValueInputOption(object):
     USER_ENTERED = "USER_ENTERED"
 
 
+class NumberFormatType(object):
+    """
+    Doc: https://developers.google.com/sheets/reference/rest/v4/spreadsheets#NumberFormatType
+    """
+    TEXT = "TEXT"
+    NUMBER = "NUMBER"
+    PERCENT = "PERCENT"
+    CURRENCY = "CURRENCY"
+    DATE = "DATE"
+    TIME = "TIME"
+    DATE_TIME = "DATE_TIME"
+    SCIENTIFIC = "SCIENTIFIC"
+
+
 class Client(object):
     """
     An instance of this class communicates with Google Spreadsheets APIs.
@@ -545,6 +559,117 @@ class Sheet(object):
         if col is not None:
             requests.append(self.insert_request(Dimension.COLUMNS, col_start_index, col, inherit_before))
 
+        self.client.update(self.spreadsheet.file_id, requests)
+        self.refresh()
+
+    def number_format(self, format_type=NumberFormatType.NUMBER, pattern=None):
+        """
+        Number format object
+
+        :param format_type: format type
+        :param pattern: pattern
+        :return: number format object
+        """
+        number_format = {
+            "numberFormat": {
+                "type": format_type
+            }
+        }
+        if pattern is not None:
+            number_format["number_format"]["pattern"] = pattern
+
+        return number_format
+
+    def text_format(self, color=None, font_family=None, font_size=None, bold=None, italic=None,
+                    strikethrough=None, underline=None):
+        """
+        Text format object
+
+        :param color: Color object, eg: {"red": 0, "green": 1, "blue": 1, "alpha": 0}
+        :param font_family: string
+        :param font_size: size of font
+        :param bold: true if the text is bold
+        :param italic: true if the text is italic
+        :param strikethrough: true if the text has a strikethrough
+        :param underline: true if the text is underlined
+        :return: text format object
+        """
+        text_format = {
+            "textFormat": {}
+        }
+        if color is not None:
+            text_format["textFormat"]["foregroundColor"] = color
+        if font_family is not None:
+            text_format["textFormat"]["fontFamily"] = font_family
+        if font_size is not None:
+            text_format["textFormat"]["fontSize"] = font_size
+        if bold is not None:
+            text_format["textFormat"]["bold"] = bold
+        if italic is not None:
+            text_format["textFormat"]["italic"] = italic
+        if strikethrough is not None:
+            text_format["textFormat"]["strikethrough"] = strikethrough
+        if underline is not None:
+            text_format["textFormat"]["underline"] = underline
+
+        return text_format
+
+    def format_range_request(self, format_body,
+                             start_row_index=None, end_row_index=None,
+                             start_col_index=None, end_col_index=None, fields=None):
+        """
+        Only get `format_range` request, for batch_update
+
+        :param format_body: format body, self.number_format()
+        :param start_row_index: 0-based row index
+        :param end_row_index: 0-base row index, exclude
+        :param start_col_index: 0-base column index
+        :param end_col_index: 0-base column index, exclude
+        :param fields: fields to update
+        :return: update request
+        """
+        request = {
+            "repeatCell": {
+                "range": {
+                    "sheetId": self.sheet_id
+                },
+                "cell": {
+                    "userEnteredFormat": format_body
+                }
+            }
+        }
+
+        if start_row_index is not None:
+            request["repeatCell"]["range"]["startRowIndex"] = start_row_index
+        if end_row_index is not None:
+            request["repeatCell"]["range"]["endRowIndex"] = end_row_index
+        if start_col_index is not None:
+            request["repeatCell"]["range"]["startColumnIndex"] = start_col_index
+        if end_col_index is not None:
+            request["repeatCell"]["range"]["endColumnIndex"] = end_col_index
+        if fields is None:
+            fields_keys = request["repeatCell"]["cell"]["userEnteredFormat"].keys()
+            fields = ",".join(["userEnteredFormat.{}".format(f) for f in fields_keys])
+
+        request["repeatCell"]["fields"] = fields
+        return request
+
+    def format_number(self, start_row_index, end_row_index, start_col_index, end_col_index,
+                      format_type=NumberFormatType.NUMBER, pattern=None):
+        """
+        Format cell values for numbers
+
+        :param start_row_index: 0-based row index
+        :param end_row_index: 0-base row index, exclude
+        :param start_col_index: 0-based column index
+        :param end_col_index: 0-based column index, exclude
+        :param format_type: number format type
+        :param pattern: pattern
+        :return: None
+        """
+        number_format = self.number_format(format_type, pattern)
+        requests = [self.format_range_request(number_format, start_row_index, end_row_index,
+                                              start_col_index, end_col_index)]
         self.client.update(self.spreadsheet.file_id, requests)
         self.refresh()
 
