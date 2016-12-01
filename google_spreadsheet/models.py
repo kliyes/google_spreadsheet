@@ -41,6 +41,23 @@ class NumberFormatType(object):
     SCIENTIFIC = "SCIENTIFIC"
 
 
+class ValueRenderOption(object):
+    """
+    Doc: https://developers.google.com/sheets/reference/rest/v4/ValueRenderOption
+    """
+    FORMATTED_VALUE = "FORMATTED_VALUE"
+    UNFORMATTED_VALUE = "UNFORMATTED_VALUE"
+    FORMULA = "FORMULA"
+
+
+class DateTimeRenderOption(object):
+    """
+    Doc: https://developers.google.com/sheets/reference/rest/v4/DateTimeRenderOption
+    """
+    SERIAL_NUMBER = "SERIAL_NUMBER"
+    FORMATTED_STRING = "FORMATTED_STRING"
+
+
 class Client(object):
     """
     An instance of this class communicates with Google Spreadsheets APIs.
@@ -106,6 +123,26 @@ class Client(object):
                     "valueInputOption": value_input_option,
                     "data": data
                 }
+            ).execute()
+        except HttpError as error:
+            raise exceptions.BadRequest(error)
+        else:
+            return response
+
+    def values_get(self, file_id, range_name, *args, **kwargs):
+        try:
+            response = self.service.spreadsheets().values().get(
+                spreadsheetId=file_id, range=range_name, *args, **kwargs
+            ).execute()
+        except HttpError as error:
+            raise exceptions.BadRequest(error)
+        else:
+            return response
+
+    def values_batch_get(self, file_id, ranges, *args, **kwargs):
+        try:
+            response = self.service.spreadsheets().values().batchGet(
+                spreadsheetId=file_id, ranges=ranges, *args, **kwargs
             ).execute()
         except HttpError as error:
             raise exceptions.BadRequest(error)
@@ -390,6 +427,23 @@ class Sheet(object):
 
         label = '%s%s' % (column_label, row + 1)
         return label
+
+    def get_range_name(self, range_start, range_end=None):
+        """
+        Get cell range
+
+        :param range_start: A1 notation
+        :param range_end: A1 notation
+        :return: range name
+        Example:
+        >>> sheet.get_range("A1", "B2")
+        >>> "Sheet Name!A1:B2"
+        """
+        range_name = "{sheet_name}!{range_start}{range_end}".format(
+            sheet_name=self.name, range_start=range_start,
+            range_end=":{range_end}".format(range_end=range_end) if range_end else ""
+        )
+        return range_name
 
     def refresh(self):
         self.spreadsheet.refresh()
@@ -683,10 +737,7 @@ class Sheet(object):
         :param major_dimension: Indicates which dimension an operation should apply to
         :return: values data
         """
-        range_name = "{sheet_name}!{range_start}{range_end}".format(
-            sheet_name=self.name, range_start=range_start,
-            range_end=":{range_end}".format(range_end=range_end) if range_end else ""
-        )
+        range_name = self.get_range_name(range_start, range_end)
         if not values:
             return {}
 
@@ -727,3 +778,24 @@ class Sheet(object):
         response = self.client.values_batch_update(self.spreadsheet.file_id, values_data_list, value_input_option)
         self.refresh()
         return response
+
+    def get_values(self, range_start, range_end=None, major_dimension=Dimension.ROWS,
+                   value_render_option=ValueRenderOption.FORMATTED_VALUE,
+                   date_time_render_option=DateTimeRenderOption.SERIAL_NUMBER):
+        range_name = self.get_range_name(range_start, range_end)
+        parameters = {
+            "majorDimension": major_dimension,
+            "valueRenderOption": value_render_option,
+            "dateTimeRenderOption": date_time_render_option
+        }
+        return self.client.values_get(self.spreadsheet.file_id, range_name, **parameters)
+
+    def batch_get_values(self, ranges, major_dimension=Dimension.ROWS,
+                         value_render_option=ValueRenderOption.FORMATTED_VALUE,
+                         date_time_render_option=DateTimeRenderOption.SERIAL_NUMBER):
+        parameters = {
+            "majorDimension": major_dimension,
+            "valueRenderOption": value_render_option,
+            "dateTimeRenderOption": date_time_render_option
+        }
+        return self.client.values_batch_get(self.spreadsheet.file_id, ranges, **parameters)
