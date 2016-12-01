@@ -576,7 +576,7 @@ class Sheet(object):
             }
         }
         if pattern is not None:
-            number_format["number_format"]["pattern"] = pattern
+            number_format["numberFormat"]["pattern"] = pattern
 
         return number_format
 
@@ -654,7 +654,7 @@ class Sheet(object):
         request["repeatCell"]["fields"] = fields
         return request
 
-    def format_number(self, start_row_index, end_row_index, start_col_index, end_col_index,
+    def format_number(self, start_row_index=None, end_row_index=None, start_col_index=None, end_col_index=None,
                       format_type=NumberFormatType.NUMBER, pattern=None):
         """
         Format cell values for numbers
